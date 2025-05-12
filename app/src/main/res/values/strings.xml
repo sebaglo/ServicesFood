@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Servicios</string>
+
+    <string-array name="colacion">
+        <item>Desayuno</item>
+        <item>Almuerzo</item>
+    </string-array>
+</resources>

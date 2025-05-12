@@ -1,0 +1,56 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Spinner de colación -->
+    <Spinner
+        android:id="@+id/spinnerColacion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <!-- EditText para escanear el RUT -->
+    <EditText
+        android:id="@+id/txtResultado"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Escanear o escribir RUT"
+        android:inputType="text"/>
+
+    <!-- Botón Ingresar -->
+    <Button
+        android:id="@+id/btnIngresar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ingresar" />
+
+    <!-- Botón Registrar Salida -->
+    <Button
+        android:id="@+id/btnRegistrarSalida"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Registrar Salida" />
+
+    <Button
+        android:id="@+id/btnEscanear"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Escanear RUT" />
+
+
+    <Button
+        android:id="@+id/btnRegresar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Regresar" />
+
+    <!-- ListView para mostrar los registros -->
+    <ListView
+        android:id="@+id/listViewAlumnos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>
