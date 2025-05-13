@@ -25,6 +25,7 @@
         android:id="@+id/btnIngresar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:onClick="GetTextFromSQL"
         android:text="Ingresar" />
 
     <!-- Botón Registrar Salida -->
@@ -39,6 +40,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Escanear RUT" />
+
+    <Button
+        android:id="@+id/btnLista"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Listado ALumno" />
 
 
     <Button

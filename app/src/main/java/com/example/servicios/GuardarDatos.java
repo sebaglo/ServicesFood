@@ -3,29 +3,45 @@ package com.example.servicios;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class GuardarDatos extends AppCompatActivity {
 
+
     private Spinner spinnerColacion;
     private EditText editTextRut;
-    private Button btnIngresar, btnRegistrarSalida, btnEscanear, btnGuardar;
+    private Button btnIngresar, btnRegistrarSalida, btnEscanear, btnGuardar, btnLista;
     private ListView listViewAlumnos;
 
     private String fechaSeleccionada = "";
@@ -42,6 +58,7 @@ public class GuardarDatos extends AppCompatActivity {
         spinnerColacion = findViewById(R.id.spinnerColacion);
         editTextRut = findViewById(R.id.txtResultado);
         btnIngresar = findViewById(R.id.btnIngresar);
+        btnLista = findViewById(R.id.btnLista);
         btnGuardar = findViewById(R.id.btnRegresar);
         btnRegistrarSalida = findViewById(R.id.btnRegistrarSalida);
         btnEscanear = findViewById(R.id.btnEscanear);
@@ -55,6 +72,15 @@ public class GuardarDatos extends AppCompatActivity {
         );
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerColacion.setAdapter(spinnerAdapter);
+
+        //Boton listado
+        btnLista.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(GuardarDatos.this, ListarAlumnosActivity.class);
+                startActivity(intent);
+            }
+        });
 
         // Inicializar lista
         listaRegistros = new ArrayList<>();
@@ -109,7 +135,7 @@ public class GuardarDatos extends AppCompatActivity {
             }
         });
 
-        btnGuardar.setOnClickListener(v ->{
+        btnGuardar.setOnClickListener(v -> {
             startActivity(new Intent(this, MainActivity.class));
             finish();
         });
@@ -168,13 +194,12 @@ public class GuardarDatos extends AppCompatActivity {
             } else {
                 Toast.makeText(this, result.getContents(), Toast.LENGTH_SHORT).show();
                 rutEscaneado = result.getContents();  // Guardar el RUT escaneado
-                editTextRut.setText(rutEscaneado);    // Mostrarlo en el campo de texto
+                editTextRut.setText(rutEscaneado);// Mostrarlo en el campo de texto
             }
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
     }
-
     private String formatearFecha(Date fecha) {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
         return sdf.format(fecha);
