@@ -20,8 +20,6 @@ import java.sql.Statement;
 
 public class MainActivity extends AppCompatActivity {
 
-
-
     private Button btnIngresar, btnSalir;
 
     @SuppressLint("MissingInflatedId")

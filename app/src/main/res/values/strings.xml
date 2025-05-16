@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Servicios</string>
+    <string name="open">Abrir menu</string>
+    <string name="close">Cerra menu</string>
 
     <string-array name="colacion">
         <item>Desayuno</item>
