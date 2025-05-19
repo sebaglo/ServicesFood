@@ -38,6 +38,13 @@
         android:onClick="GetTextFromSQL"
         android:text="Ingresar" />
 
+    <Button
+        android:id="@+id/btnRegistrarAlumno"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Registrar Alumno" />
+
+
     <!-- Botón Registrar Salida -->
     <Button
         android:id="@+id/btnRegistrarSalida"

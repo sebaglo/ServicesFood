@@ -17,12 +17,12 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.Request;
-import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -35,14 +35,18 @@ import java.util.Map;
 
 public class GuardarDatos extends AppCompatActivity {
 
+    private Alumno alumnoEncontrado;
     private TextView txtNombreAlumno;
     private Spinner spinnerColacion;
     private EditText editTextRut;
-    private Button btnIngresar, btnRegistrarSalida, btnEscanear, btnGuardar;
+    private Button btnIngresar, btnRegistrarSalida, btnEscanear, btnGuardar,btnRegistrarAlumnos;
     private ListView listViewAlumnos;
 
     private String fechaSeleccionada = "";
     private String rutEscaneado = "";
+
+    // Inicializo la lista de alumnos aquí para evitar NullPointerException
+    private ArrayList<Alumno> listaAlumnos = new ArrayList<>();
     private ArrayList<String> listaRegistros;
     private ArrayAdapter<String> adapter;
 
@@ -53,7 +57,7 @@ public class GuardarDatos extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.guardar_datos);
-
+        btnRegistrarAlumnos = findViewById(R.id.btnRegistrarAlumno);
         txtNombreAlumno = findViewById(R.id.txtNombreAlumno);
         spinnerColacion = findViewById(R.id.spinnerColacion);
         editTextRut = findViewById(R.id.txtResultado);
@@ -62,6 +66,49 @@ public class GuardarDatos extends AppCompatActivity {
         btnRegistrarSalida = findViewById(R.id.btnRegistrarSalida);
         btnEscanear = findViewById(R.id.btnEscanear);
         listViewAlumnos = findViewById(R.id.listViewAlumnos);
+
+        //boton de registrar alumnos en la base de datos
+
+        btnRegistrarAlumnos.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (alumnoEncontrado != null) {
+                    String rut = alumnoEncontrado.getRut();
+                    String nombre = alumnoEncontrado.getNombres();
+                    String apPaterno = alumnoEncontrado.getApPaterno();
+                    String apMaterno = alumnoEncontrado.getApMaterno();
+
+                    String fecha = fechaSeleccionada;
+                    String horaIngreso = obtenerHoraActual();
+                    String colacion = spinnerColacion.getSelectedItem().toString(); // "Desayuno" o "Almuerzo"
+
+                    // Registrar ingreso en PHP y local
+                    registrarIngreso(rut, nombre, apPaterno, apMaterno, fecha, horaIngreso, colacion);
+
+                    // Mostrar en ListView
+                    String nombreCompleto = nombre + " " + apPaterno + " " + apMaterno;
+                    String registro = rut + " - " + nombreCompleto +
+                            "\nFecha: " + fecha + " | Hora ingreso: " + horaIngreso +
+                            " | Colación: " + colacion;
+
+                    listaRegistros.add(registro);
+                    adapter.notifyDataSetChanged();
+
+                    // Limpiar campo y variables
+                    mostrarToast("Alumno registrado correctamente");
+                    editTextRut.setText("");
+                    rutEscaneado = "";
+                } else {
+                    mostrarToast("No se encontró el alumno");
+                }
+            }
+        });
+
+// Limpiar campos
+        editTextRut.setText("");
+        rutEscaneado = "";
+        // Ya inicialicé listaAlumnos arriba, solo cargo los datos
+        cargarAlumnosDesdeServidor();
 
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(
                 this,
@@ -75,28 +122,49 @@ public class GuardarDatos extends AppCompatActivity {
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, listaRegistros);
         listViewAlumnos.setAdapter(adapter);
 
-        Date fechaActual = new Date();
-        fechaSeleccionada = formatearFecha(fechaActual);
+        fechaSeleccionada = formatearFecha(new Date());
 
         listViewAlumnos.setOnItemLongClickListener((parent, view, position, id) -> {
             String registroSeleccionado = listaRegistros.get(position);
+
             new AlertDialog.Builder(GuardarDatos.this)
-                    .setTitle("Eliminar registro")
-                    .setMessage("¿Estás seguro de que quieres eliminar este registro?\n" + registroSeleccionado)
-                    .setPositiveButton("Sí", (dialog, which) -> {
+                    .setTitle("Acción para el registro")
+                    .setMessage("¿Qué deseas hacer con este registro?\n" + registroSeleccionado)
+                    .setPositiveButton("Registrar salida", (dialog, which) -> {
+                        // Extraer RUT del registro (asumiendo que el rut está antes del primer " - ")
+                        String rut = registroSeleccionado.split(" - ")[0];
+
+                        // Verificar si ya tiene salida registrada
+                        if (registroSeleccionado.contains("Hora salida")) {
+                            mostrarToast("Salida ya registrada para este alumno");
+                        } else {
+                            // Agregar hora salida
+                            String horaSalida = obtenerHoraActual();
+                            listaRegistros.set(position, registroSeleccionado + "\nHora salida: " + horaSalida);
+                            adapter.notifyDataSetChanged();
+
+                            // Registrar salida en servidor
+                            registrarSalida(rut, fechaSeleccionada, horaSalida);
+
+                            mostrarToast("Salida registrada");
+                        }
+                    })
+                    .setNegativeButton("Eliminar", (dialog, which) -> {
                         listaRegistros.remove(position);
                         adapter.notifyDataSetChanged();
                         mostrarToast("Registro eliminado");
                     })
-                    .setNegativeButton("No", null)
+                    .setNeutralButton("Cancelar", null)
                     .show();
+
             return true;
         });
+
 
         btnIngresar.setOnClickListener(v -> {
             String rut = rutEscaneado.isEmpty() ? editTextRut.getText().toString().trim() : rutEscaneado;
             if (!rut.isEmpty()) {
-                buscarAlumnoPorRut(rut);
+                buscarAlumnoLocalmentePorRut(rut);
             } else {
                 mostrarToast("Por favor escanee o escriba un RUT");
             }
@@ -109,32 +177,8 @@ public class GuardarDatos extends AppCompatActivity {
 
         btnRegistrarSalida.setOnClickListener(v -> {
             String rut = rutEscaneado.isEmpty() ? editTextRut.getText().toString().trim() : rutEscaneado;
-
             if (!rut.isEmpty()) {
-                boolean encontrado = false;
-                String horaSalida = obtenerHoraActual();
-
-                for (int i = 0; i < listaRegistros.size(); i++) {
-                    String registro = listaRegistros.get(i);
-                    if (registro.contains(rut) && !registro.contains("Hora salida")) {
-                        listaRegistros.set(i, registro + "\nHora salida: " + horaSalida);
-                        encontrado = true;
-
-                        registrarSalida(rut, fechaSeleccionada, horaSalida);
-
-                        break;
-                    }
-                }
-
-                if (encontrado) {
-                    adapter.notifyDataSetChanged();
-                    mostrarToast("Hora de salida registrada para el RUT: " + rut);
-                } else {
-                    mostrarToast("Alumno no encontrado o ya tiene hora de salida registrada");
-                }
-
-                editTextRut.setText("");
-                rutEscaneado = "";
+                registrarSalidaManual(rut);
             } else {
                 mostrarToast("Por favor escanee o escriba un RUT");
             }
@@ -155,12 +199,12 @@ public class GuardarDatos extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (result != null) {
-            if (result.getContents() == null) {
-                mostrarToast("Lector Cancelado");
-            } else {
-                mostrarToast(result.getContents());
+            if (result.getContents() != null) {
                 rutEscaneado = result.getContents();
                 editTextRut.setText(rutEscaneado);
+                mostrarToast("RUT: " + rutEscaneado);
+            } else {
+                mostrarToast("Lector cancelado");
             }
         } else {
             super.onActivityResult(requestCode, resultCode, data);
@@ -168,82 +212,22 @@ public class GuardarDatos extends AppCompatActivity {
     }
 
     private String formatearFecha(Date fecha) {
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-        return sdf.format(fecha);
+        return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(fecha);
     }
 
     private String obtenerHoraActual() {
         return new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
     }
 
-    private void buscarAlumnoPorRut(String rut) {
-        String url = "http:/172.100.8.85/buscar_alumno.php?RUT_ALUMNO=" + rut;
-
-        RequestQueue queue = Volley.newRequestQueue(this);
-
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                response -> {
-                    Log.d("RESPUESTA_SERVIDOR", response); // Ver si llega vacío o malformado
-                    Toast.makeText(GuardarDatos.this, "Respuesta: " + response, Toast.LENGTH_LONG).show(); // <-- línea añadida
-
-                    try {
-                        JSONObject jsonObject = new JSONObject(response);
-                        boolean success = jsonObject.getBoolean("success");
-                        if (success) {
-                            JSONObject alumno = jsonObject.getJSONObject("alumno");
-                            String nombre = alumno.getString("nombre");
-                            String apPaterno = alumno.getString("ap_paterno");
-                            String apMaterno = alumno.getString("ap_materno");
-
-                            txtNombreAlumno.setText(nombre + " " + apPaterno + " " + apMaterno);
-
-                            String horaIngreso = obtenerHoraActual();
-                            String colacion = spinnerColacion.getSelectedItem().toString();
-
-                            String registro = "RUT: " + rut + "\nFecha: " + fechaSeleccionada + "\nColación: " + colacion + "\nHora ingreso: " + horaIngreso;
-                            listaRegistros.add(registro);
-                            adapter.notifyDataSetChanged();
-
-                            registrarIngreso(rut, nombre, apPaterno, apMaterno, fechaSeleccionada, horaIngreso, colacion);
-
-                            editTextRut.setText("");
-                            rutEscaneado = "";
-
-                        } else {
-                            mostrarToast("Alumno no encontrado en la base de datos");
-                            txtNombreAlumno.setText("");
-                        }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        mostrarToast("Error al procesar la respuesta del servidor");
-                    }
-                },
-                error -> {
-                    mostrarToast("Error de conexión: " + error.getMessage());
-                });
-
-        queue.add(stringRequest);
-    }
-
-
     private void registrarIngreso(String rut, String nombre, String apPaterno, String apMaterno,
                                   String fecha, String horaIngreso, String colacion) {
 
+        String url = "http://172.100.8.85/registrar_ingreso.php";
         String nombreCompleto = nombre + " " + apPaterno + " " + apMaterno;
 
-        String url = "http:/172.100.8.85/registrar_ingreso.php";
-
-        RequestQueue queue = Volley.newRequestQueue(this);
-
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
-                response -> {
-                    mostrarToast("Ingreso registrado correctamente");
-                    Log.d("RegistrarIngreso", "Respuesta: " + response);
-                },
-                error -> {
-                    mostrarToast("Error al registrar ingreso: " + error.getMessage());
-                    Log.e("RegistrarIngreso", "Error: " + error.toString());
-                }) {
+                response -> Log.d("Ingreso", "Respuesta: " + response),
+                error -> Log.e("Ingreso", "Error: " + error.toString())) {
             @Override
             protected Map<String, String> getParams() {
                 Map<String, String> params = new HashMap<>();
@@ -256,22 +240,62 @@ public class GuardarDatos extends AppCompatActivity {
             }
         };
 
-        queue.add(postRequest);
+        registrarAlumnoEnAsistencia(
+                rut,
+                nombreCompleto,
+                fecha,
+                horaIngreso,
+                colacion
+        );
+
+        Volley.newRequestQueue(this).add(postRequest);
     }
 
-    private void registrarSalida(String rut, String fecha, String horaSalida) {
-        String url = "http:/172.100.8.85/registrar_salida.php";
 
-        RequestQueue queue = Volley.newRequestQueue(this);
+    private void registrarSalidaManual(String rut) {
+        String horaSalida = obtenerHoraActual();
+        boolean encontrado = false;
+
+        for (int i = 0; i < listaRegistros.size(); i++) {
+            String registro = listaRegistros.get(i);
+            // Buscar registro sin hora de salida y con el RUT
+            if (registro.contains(rut) && !registro.contains("Hora salida")) {
+                String nuevoRegistro = registro + "\nHora salida: " + horaSalida;
+                listaRegistros.set(i, nuevoRegistro);
+                encontrado = true;
+
+                // Registrar salida en servidor
+                registrarSalida(rut, fechaSeleccionada, horaSalida);
+                Log.d("Salida", "Registro actualizado: " + nuevoRegistro);
+                break;
+            }
+        }
+
+        if (encontrado) {
+            adapter.notifyDataSetChanged();
+            mostrarToast("Salida registrada");
+        } else {
+            mostrarToast("Registro no encontrado o ya tiene salida");
+        }
+
+        // Limpiar inputs
+        editTextRut.setText("");
+        rutEscaneado = "";
+    }
+
+// También mejora registrarSalida para saber si hubo éxito o error
+
+    private void registrarSalida(String rut, String fecha, String horaSalida) {
+        String url = "http://172.100.8.85/registrar_salida.php";
 
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
-                    mostrarToast("Salida registrada correctamente");
-                    Log.d("RegistrarSalida", "Respuesta: " + response);
+                    Log.d("Salida", "Respuesta del servidor: " + response);
+                    mostrarToast("Salida registrada en servidor");
                 },
                 error -> {
-                    mostrarToast("Error al registrar salida: " + error.getMessage());
-                    Log.e("RegistrarSalida", "Error: " + error.toString());
+                    Log.e("Salida", "Error en el servidor: " + error.toString());
+                    mostrarToast("Error al registrar salida en servidor");
                 }) {
             @Override
             protected Map<String, String> getParams() {
@@ -283,7 +307,7 @@ public class GuardarDatos extends AppCompatActivity {
             }
         };
 
-        queue.add(postRequest);
+        Volley.newRequestQueue(this).add(postRequest);
     }
 
     private void mostrarToast(String mensaje) {
@@ -291,4 +315,132 @@ public class GuardarDatos extends AppCompatActivity {
         toastGlobal = Toast.makeText(this, mensaje, Toast.LENGTH_SHORT);
         toastGlobal.show();
     }
+
+    private void cargarAlumnosDesdeServidor() {
+        String url = "http://172.100.8.85/obtener_todos_alumnos.php";
+
+        StringRequest request = new StringRequest(Request.Method.GET, url,
+                response -> {
+                    try {
+                        JSONArray jsonArray = new JSONArray(response);
+                        listaAlumnos.clear(); // Limpio la lista para no duplicar
+
+                        for (int i = 0; i < jsonArray.length(); i++) {
+                            JSONObject alumnoJson = jsonArray.getJSONObject(i);
+                            Alumno alumno = new Alumno(
+                                    alumnoJson.getString("RUT_ALUMNO"),
+                                    alumnoJson.getString("NOMBRES_ALUMNO"),
+                                    alumnoJson.getString("AP_PATERNO_ALUMNO"),
+                                    alumnoJson.getString("AP_MATERNO_ALUMNO")
+                            );
+                            listaAlumnos.add(alumno);
+                        }
+                        mostrarToast("Alumnos cargados: " + listaAlumnos.size());
+                    } catch (JSONException e) {
+                        mostrarToast("Error al leer datos");
+                        e.printStackTrace();
+                    }
+                },
+                error -> {
+                    mostrarToast("Error al conectar con el servidor");
+                    error.printStackTrace();
+                });
+
+        Volley.newRequestQueue(this).add(request);
+    }
+
+
+    private void buscarAlumnoLocalmentePorRut(String rut) {
+        if (listaAlumnos == null || listaAlumnos.isEmpty()) {
+            mostrarToast("Lista de alumnos no cargada o vacía");
+            return;
+        }
+
+        for (Alumno alumno : listaAlumnos) {
+            if (alumno.getRut().equalsIgnoreCase(rut)) {
+                alumnoEncontrado = alumno; // ← Asignamos el alumno a la variable global
+
+                String nombreCompleto = alumno.getNombres() + " " + alumno.getApPaterno() + " " + alumno.getApMaterno();
+                txtNombreAlumno.setText(nombreCompleto);
+
+                String colacion = spinnerColacion.getSelectedItem().toString();
+                String horaIngreso = obtenerHoraActual();
+
+                registrarIngreso(
+                        alumno.getRut(),
+                        alumno.getNombres(),
+                        alumno.getApPaterno(),
+                        alumno.getApMaterno(),
+                        fechaSeleccionada,
+                        horaIngreso,
+                        colacion
+                );
+
+                // Guardar registro para mostrar en ListView
+                String registro = alumno.getRut() + " - " + nombreCompleto +
+                        "\nFecha: " + fechaSeleccionada + " | Hora ingreso: " + horaIngreso + " | " + colacion;
+                listaRegistros.add(registro);
+                adapter.notifyDataSetChanged();
+
+                // Limpiar campo de RUT y variable de escaneo
+                editTextRut.setText("");
+                rutEscaneado = "";
+
+                mostrarToast("Alumno registrado");
+
+                return;
+            }
+        }
+
+        mostrarToast("Alumno no encontrado en la lista local");
+    }
+    private void registrarAlumnoEnAsistencia(
+            String rut,
+            String nombreCompleto,
+            String fecha,
+            String horaIngreso,
+            String colacion) {
+
+        String url = "http://172.100.8.85/registrar_alumno_asistencia.php"; // Cambia esta URL por la correcta
+
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                response -> {
+                    try {
+                        JSONObject jsonResponse = new JSONObject(response);
+                        String status = jsonResponse.getString("status");
+                        String message = jsonResponse.getString("message");
+
+                        mostrarToast(message);
+
+                        if (status.equals("success")) {
+                            // Opcional: actualizar UI, limpiar campos, etc.
+                            editTextRut.setText("");
+                            txtNombreAlumno.setText("");
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        mostrarToast("Error procesando la respuesta del servidor");
+                    }
+                },
+                error -> {
+                    error.printStackTrace();
+                    mostrarToast("Error de conexión con el servidor");
+                }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<>();
+                params.put("RUT_ALUMNO", rut);
+                params.put("NOMBRE_COMPLETO_ALUMNO", nombreCompleto);
+                params.put("FECHA", fecha);
+                params.put("HORA_INGRESO", horaIngreso);
+                params.put("COLACION", colacion);
+                return params;
+            }
+        };
+
+        Volley.newRequestQueue(this).add(postRequest);
+    }
+
+
 }
