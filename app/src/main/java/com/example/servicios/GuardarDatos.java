@@ -35,11 +35,12 @@ import java.util.Map;
 
 public class GuardarDatos extends AppCompatActivity {
 
+    private static final int REQUEST_CAMERA_PERMISSION = 100;
     private Alumno alumnoEncontrado;
     private TextView txtNombreAlumno;
     private Spinner spinnerColacion;
     private EditText editTextRut;
-    private Button btnIngresar, btnRegistrarSalida, btnEscanear, btnGuardar,btnRegistrarAlumnos;
+    private Button btnIngresar, btnRegistrarSalida, btnEscanear, btnGuardar,btnRegistrarAlumnos, btnListado;
     private ListView listViewAlumnos;
 
     private String fechaSeleccionada = "";
@@ -57,6 +58,8 @@ public class GuardarDatos extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.guardar_datos);
+        //Validamos instancias
+        btnListado = findViewById(R.id.btnListado);
         btnRegistrarAlumnos = findViewById(R.id.btnRegistrarAlumno);
         txtNombreAlumno = findViewById(R.id.txtNombreAlumno);
         spinnerColacion = findViewById(R.id.spinnerColacion);
@@ -67,8 +70,17 @@ public class GuardarDatos extends AppCompatActivity {
         btnEscanear = findViewById(R.id.btnEscanear);
         listViewAlumnos = findViewById(R.id.listViewAlumnos);
 
-        //boton de registrar alumnos en la base de datos
+        //Boton de Listado de Alumnos
+        btnListado.setOnClickListener(v-> {
+            Intent intent = new Intent(GuardarDatos.this, Asistencia.class);
+            intent.putExtra("Rut", "12345678-9");
+            intent.putExtra("Nombre", "Juan Perez");
+            startActivity(intent);
+        });
 
+
+
+        //boton de registrar alumnos en la base de datos
         btnRegistrarAlumnos.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -78,12 +90,17 @@ public class GuardarDatos extends AppCompatActivity {
                     String apPaterno = alumnoEncontrado.getApPaterno();
                     String apMaterno = alumnoEncontrado.getApMaterno();
 
+                    Intent intent = new Intent(GuardarDatos.this, Asistencia.class);
+                    intent.putExtra("rut", rutEscaneado);
+                    intent.putExtra("Nombre", String.valueOf(txtNombreAlumno));
+                    startActivity(intent);
+
                     String fecha = fechaSeleccionada;
                     String horaIngreso = obtenerHoraActual();
                     String colacion = spinnerColacion.getSelectedItem().toString(); // "Desayuno" o "Almuerzo"
 
                     // Registrar ingreso en PHP y local
-                    registrarIngreso(rut, nombre, apPaterno, apMaterno, fecha, horaIngreso, colacion);
+
 
                     // Mostrar en ListView
                     String nombreCompleto = nombre + " " + apPaterno + " " + apMaterno;
@@ -184,6 +201,8 @@ public class GuardarDatos extends AppCompatActivity {
             }
         });
 
+
+
         btnEscanear.setOnClickListener(v -> {
             IntentIntegrator integrator = new IntentIntegrator(GuardarDatos.this);
             integrator.setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES);
@@ -219,37 +238,7 @@ public class GuardarDatos extends AppCompatActivity {
         return new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
     }
 
-    private void registrarIngreso(String rut, String nombre, String apPaterno, String apMaterno,
-                                  String fecha, String horaIngreso, String colacion) {
 
-        String url = "http://172.100.8.85/registrar_ingreso.php";
-        String nombreCompleto = nombre + " " + apPaterno + " " + apMaterno;
-
-        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
-                response -> Log.d("Ingreso", "Respuesta: " + response),
-                error -> Log.e("Ingreso", "Error: " + error.toString())) {
-            @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<>();
-                params.put("RUT_ALUMNO", rut);
-                params.put("NOMBRE_COMPLETO_ALUMNO", nombreCompleto);
-                params.put("FECHA", fecha);
-                params.put("HORA_INGRESO", horaIngreso);
-                params.put("COLACION", colacion);
-                return params;
-            }
-        };
-
-        registrarAlumnoEnAsistencia(
-                rut,
-                nombreCompleto,
-                fecha,
-                horaIngreso,
-                colacion
-        );
-
-        Volley.newRequestQueue(this).add(postRequest);
-    }
 
 
     private void registrarSalidaManual(String rut) {
@@ -286,7 +275,7 @@ public class GuardarDatos extends AppCompatActivity {
 // También mejora registrarSalida para saber si hubo éxito o error
 
     private void registrarSalida(String rut, String fecha, String horaSalida) {
-        String url = "http://172.100.8.85/registrar_salida.php";
+        String url = "http://172.100.8.99/registrar_salida.php";
 
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
@@ -317,7 +306,7 @@ public class GuardarDatos extends AppCompatActivity {
     }
 
     private void cargarAlumnosDesdeServidor() {
-        String url = "http://172.100.8.85/obtener_todos_alumnos.php";
+        String url = "http://172.100.8.99/obtener_todos_alumnos.php";
 
         StringRequest request = new StringRequest(Request.Method.GET, url,
                 response -> {
@@ -366,15 +355,6 @@ public class GuardarDatos extends AppCompatActivity {
                 String colacion = spinnerColacion.getSelectedItem().toString();
                 String horaIngreso = obtenerHoraActual();
 
-                registrarIngreso(
-                        alumno.getRut(),
-                        alumno.getNombres(),
-                        alumno.getApPaterno(),
-                        alumno.getApMaterno(),
-                        fechaSeleccionada,
-                        horaIngreso,
-                        colacion
-                );
 
                 // Guardar registro para mostrar en ListView
                 String registro = alumno.getRut() + " - " + nombreCompleto +
@@ -401,7 +381,7 @@ public class GuardarDatos extends AppCompatActivity {
             String horaIngreso,
             String colacion) {
 
-        String url = "http://172.100.8.85/registrar_alumno_asistencia.php"; // Cambia esta URL por la correcta
+        String url = "http://172.100.8.99/insertar_asistencia.php"; // Cambia esta URL por la correcta
 
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 response -> {
