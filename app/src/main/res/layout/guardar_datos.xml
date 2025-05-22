@@ -44,25 +44,19 @@
         android:layout_height="wrap_content"
         android:text="Registrar Alumno" />
 
-    <Button
-        android:id="@+id/btnListado"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text= "Ver Listado"/>
-
-
-    <!-- Botón Registrar Salida -->
-    <Button
-        android:id="@+id/btnRegistrarSalida"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Registrar Salida" />
 
     <Button
         android:id="@+id/btnEscanear"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Escanear RUT" />
+
+    <Button
+        android:id="@+id/btnRegistrarAsistencia"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Registrar Asistencia"
+        android:visibility="gone" />
 
 
     <Button

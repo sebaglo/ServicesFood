@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvRut"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="RUT"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:paddingBottom="8dp" />
+
+    <EditText
+        android:id="@+id/inputNombres"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nombres" />
+
+    <EditText
+        android:id="@+id/inputApPaterno"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Apellido Paterno"
+        android:inputType="textPersonName" />
+
+    <EditText
+        android:id="@+id/inputApMaterno"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Apellido Materno"
+        android:inputType="textPersonName" />
+
+</LinearLayout>
